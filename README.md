@@ -2,7 +2,11 @@
 
 A native macOS live mirror for speech practice, with a floating titleless window and local video recordings. Built with Swift, AppKit, AVFoundation, and AVKit; no third-party dependencies or network services.
 
-![Simple Video Recorder in use](Assets/SimpleVideoRecorder-screenshot.png)
+<p align="center">
+  <img src="Assets/SimpleVideoRecorder-live.png" alt="Simple Video Recorder showing the live preview" width="48%">
+  <img src="Assets/SimpleVideoRecorder-recordings.png" alt="Simple Video Recorder showing the recordings view" width="48%">
+</p>
+<p align="center"><em>Live preview · Recordings view</em></p>
 
 ## Build and open
 
