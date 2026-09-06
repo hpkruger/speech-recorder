@@ -2,6 +2,8 @@
 
 A native macOS live mirror for speech practice, with a floating titleless window and local video recordings. Built with Swift, AppKit, AVFoundation, and AVKit; no third-party dependencies or network services.
 
+![Speech Recorder in use](Assets/SpeechRecorder-screenshot.png)
+
 ## Build and open
 
 Requires macOS 14 or later and Xcode command-line tools. From this directory:
