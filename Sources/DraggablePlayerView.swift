@@ -31,7 +31,7 @@ final class DraggablePlayerView: AVPlayerView {
             case .leftMouseUp:
                 guard self.dragAnchor != nil else { return event }
                 self.dragAnchor = nil
-                window.saveFrame(usingName: "SpeechRecorderWindow")
+                window.saveFrame(usingName: "SimpleVideoRecorderWindow")
                 return nil
             default: return event
             }

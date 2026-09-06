@@ -1,8 +1,8 @@
-# Speech Recorder
+# Simple Video Recorder
 
 A native macOS live mirror for speech practice, with a floating titleless window and local video recordings. Built with Swift, AppKit, AVFoundation, and AVKit; no third-party dependencies or network services.
 
-![Speech Recorder in use](Assets/SpeechRecorder-screenshot.png)
+![Simple Video Recorder in use](Assets/SimpleVideoRecorder-screenshot.png)
 
 ## Build and open
 
@@ -10,10 +10,10 @@ Requires macOS 14 or later and Xcode command-line tools. From this directory:
 
 ```sh
 ./scripts/build.sh
-open "$HOME/Applications/Speech Recorder.app"
+open "$HOME/Applications/Simple Video Recorder.app"
 ```
 
-The script creates a release build and an ad-hoc signed app bundle in `~/Applications/Speech Recorder.app`. It refuses to rebuild while Speech Recorder is running. The app bundle is kept outside the synced Documents folder because file-provider metadata there caused strict signature verification to fail. Open `Package.swift` in Xcode to edit the source; use the bundled app to run with the correct camera/microphone permission descriptions. Rebuilding an ad-hoc signed application can cause macOS to request permissions again. Distribution to other Macs would need Developer ID signing and notarization.
+The script creates a release build and an ad-hoc signed app bundle in `~/Applications/Simple Video Recorder.app`. It refuses to rebuild while Simple Video Recorder is running. The app bundle is kept outside the synced Documents folder because file-provider metadata there caused strict signature verification to fail. Open `Package.swift` in Xcode to edit the source; use the bundled app to run with the correct camera/microphone permission descriptions. Rebuilding an ad-hoc signed application can cause macOS to request permissions again. Distribution to other Macs would need Developer ID signing and notarization.
 
 ## Use
 
@@ -28,11 +28,11 @@ The script creates a release build and an ad-hoc signed app bundle in `~/Applica
 - Select a recording and click the small **×** at the top-right of its thumbnail to move it to the macOS Trash. You can also right-click and choose **Move to Trash**. Restore accidentally deleted clips from Trash in Finder.
 - Right-click a recording to reveal it in Finder.
 - Close with ⌘W to stop camera and microphone capture and release playback resources. The app stays resident with some memory allocated; ⌘Q exits it completely. Reopen through the Dock or Spotlight. Quit with ⌘Q.
-- Recordings are `.mov` files in `~/Movies/Speech Recorder`. Nothing is uploaded. Deletion moves recordings to the macOS Trash rather than permanently erasing them.
+- Recordings are `.mov` files in `~/Movies/Simple Video Recorder`. Nothing is uploaded. Deletion moves recordings to the macOS Trash rather than permanently erasing them.
 
 ## Efficiency and lifecycle
 
-The preview uses `AVCaptureVideoPreviewLayer` directly. Video/audio sample callbacks return immediately when idle, without processing the image or encoding. `AVAssetWriter` starts on the next video sample when Record is pressed, avoiding `AVCaptureMovieFileOutput` startup delay. Capture selects a 720p/30 fps camera format when available; recordings explicitly target 1280×720 H.264 at 2.5 Mb/s and AAC audio at 128 kb/s. Actual bitrate varies. After microphone permission is granted, its input stays ready while the live capture session runs. This avoids device reconfiguration on each recording, at the cost of microphone activity during live preview. No audio or video is written until Record is pressed. Playback and closing stop the camera; display/system sleep and inactive login sessions also suspend capture. Finished thumbnails and duration metadata are cached in `~/Library/Caches/local.hanskruger.SpeechRecorder/Thumbnails`.
+The preview uses `AVCaptureVideoPreviewLayer` directly. Video/audio sample callbacks return immediately when idle, without processing the image or encoding. `AVAssetWriter` starts on the next video sample when Record is pressed, avoiding `AVCaptureMovieFileOutput` startup delay. Capture selects a 720p/30 fps camera format when available; recordings explicitly target 1280×720 H.264 at 2.5 Mb/s and AAC audio at 128 kb/s. Actual bitrate varies. After microphone permission is granted, its input stays ready while the live capture session runs. This avoids device reconfiguration on each recording, at the cost of microphone activity during live preview. No audio or video is written until Record is pressed. Playback and closing stop the camera; display/system sleep and inactive login sessions also suspend capture. Finished thumbnails and duration metadata are cached in `~/Library/Caches/local.hanskruger.SimpleVideoRecorder/Thumbnails`.
 
 Floating behavior uses AppKit window levels and collection behaviors, without repeatedly activating the app. Full-screen eligibility and system overlays remain controlled by macOS.
 

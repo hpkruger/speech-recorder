@@ -6,7 +6,7 @@ import os
 /// idle sample callbacks return immediately, and compression runs only during a recording.
 final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "SpeechRecorder.capture", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "SimpleVideoRecorder.capture", qos: .userInitiated)
     private let videoOutput = AVCaptureVideoDataOutput()
     private let audioOutput = AVCaptureAudioDataOutput()
     private var microphone: AVCaptureDeviceInput?
@@ -18,7 +18,7 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     private var firstTime: CMTime?
     private var finishing = false
     private var requestedAt: TimeInterval = 0
-    private let logger = Logger(subsystem: "local.hanskruger.SpeechRecorder", category: "Capture")
+    private let logger = Logger(subsystem: "local.hanskruger.SimpleVideoRecorder", category: "Capture")
     var onError: ((String) -> Void)?
     var onStarted: (() -> Void)?
     var onFinished: ((URL?, String?) -> Void)?

@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var libraryTask: Task<Void, Never>?
     private var thumbnails: [URL: NSImage] = [:]
     private var libraryGeneration = 0
-    private let folder = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appendingPathComponent("Speech Recorder", isDirectory: true)
+    private let folder = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appendingPathComponent("Simple Video Recorder", isDirectory: true)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
@@ -143,16 +143,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let main = NSMenu()
         let appItem = NSMenuItem(); main.addItem(appItem)
         let appMenu = NSMenu(); appItem.submenu = appMenu
-        appMenu.addItem(withTitle: "Show Speech Recorder", action: #selector(showWindow), keyEquivalent: "0").target = self
+        appMenu.addItem(withTitle: "Show Simple Video Recorder", action: #selector(showWindow), keyEquivalent: "0").target = self
         appMenu.addItem(withTitle: "Show Recordings in Finder", action: #selector(showFolder), keyEquivalent: "") .target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Close Window", action: #selector(closeWindow), keyEquivalent: "w").target = self
-        appMenu.addItem(withTitle: "Quit Speech Recorder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit Simple Video Recorder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         NSApp.mainMenu = main
     }
     private func buildWindow() {
         panel = MirrorPanel(contentRect: NSRect(x: 100, y: 120, width: 480, height: recordingStripVisible ? 390 : 308), styleMask: [.borderless, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.title = "Speech Recorder"
+        panel.title = "Simple Video Recorder"
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .normal
         panel.hidesOnDeactivate = false
@@ -163,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
-        panel.setFrameAutosaveName("SpeechRecorderWindow")
+        panel.setFrameAutosaveName("SimpleVideoRecorderWindow")
         let root = VideoHoverView(); root.wantsLayer = true
         root.videoView = preview
         root.onHoverChanged = { [weak self] hovering in
@@ -233,7 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                 let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd HH-mm-ss"
-                let url = folder.appendingPathComponent("Speech \(formatter.string(from: Date()))-\(UUID().uuidString.prefix(6)).mov")
+                let url = folder.appendingPathComponent("Video \(formatter.string(from: Date()))-\(UUID().uuidString.prefix(6)).mov")
                 busy = true; recordButton.isEnabled = false
                 status.stringValue = "Preparing recording…"
                 capture.record(to: url)
@@ -332,14 +332,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         frame.size.height += heightChange
         frame.origin.y -= heightChange // Keep the video and top edge in place.
         panel.setFrame(frame, display: true)
-        panel.saveFrame(usingName: "SpeechRecorderWindow")
+        panel.saveFrame(usingName: "SimpleVideoRecorderWindow")
         UserDefaults.standard.set(visible, forKey: "RecordingStripVisible")
     }
     private func recordingDate(_ url: URL) -> Date {
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH-mm-ss"
         let name = url.deletingPathExtension().lastPathComponent
-        if name.hasPrefix("Speech "), let date = formatter.date(from: String(name.dropFirst(7).prefix(19))) { return date }
+        if name.hasPrefix("Video "), let date = formatter.date(from: String(name.dropFirst(6).prefix(19))) { return date }
         return (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
     }
     private func updateSelection() {

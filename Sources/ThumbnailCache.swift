@@ -9,7 +9,7 @@ actor ThumbnailCache {
         let seconds: Int
     }
     private let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("local.hanskruger.SpeechRecorder/Thumbnails", isDirectory: true)
+        .appendingPathComponent("local.hanskruger.SimpleVideoRecorder/Thumbnails", isDirectory: true)
     func load(_ url: URL) async -> Entry {
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let identity = "\(url.path)|\(attributes?[.size] ?? 0)|\(attributes?[.modificationDate] ?? "")"

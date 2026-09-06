@@ -1,7 +1,7 @@
 // swift-tools-version: 5.9
 import PackageDescription
 let package = Package(
-    name: "SpeechRecorder",
+    name: "SimpleVideoRecorder",
     platforms: [.macOS(.v14)],
-    targets: [.executableTarget(name: "SpeechRecorder", path: "Sources")]
+    targets: [.executableTarget(name: "SimpleVideoRecorder", path: "Sources")]
 )

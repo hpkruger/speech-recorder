@@ -1,24 +1,24 @@
 #!/bin/zsh
 set -euo pipefail
 cd "${0:A:h:h}"
-if pgrep -x SpeechRecorder >/dev/null; then
-    print -u2 "Quit Speech Recorder before rebuilding so its running signature stays valid."
+if pgrep -x SimpleVideoRecorder >/dev/null; then
+    print -u2 "Quit Simple Video Recorder before rebuilding so its running signature stays valid."
     exit 1
 fi
 swift build -c release
 ./scripts/build-icon.sh
-app_path="${SPEECH_RECORDER_APP_PATH:-$HOME/Applications/Speech Recorder.app}"
+app_path="${SIMPLE_VIDEO_RECORDER_APP_PATH:-$HOME/Applications/Simple Video Recorder.app}"
 mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
 cp Assets/AppIcon.icns "$app_path/Contents/Resources/AppIcon.icns"
-cp .build/release/SpeechRecorder "$app_path/Contents/MacOS/SpeechRecorder"
+cp .build/release/SimpleVideoRecorder "$app_path/Contents/MacOS/SimpleVideoRecorder"
 cat > "$app_path/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>SpeechRecorder</string>
-<key>CFBundleIdentifier</key><string>local.hanskruger.SpeechRecorder</string>
+<key>CFBundleExecutable</key><string>SimpleVideoRecorder</string>
+<key>CFBundleIdentifier</key><string>local.hanskruger.SimpleVideoRecorder</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleName</key><string>Speech Recorder</string>
+<key>CFBundleName</key><string>Simple Video Recorder</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>1.0</string>
 <key>CFBundleVersion</key><string>1</string>
