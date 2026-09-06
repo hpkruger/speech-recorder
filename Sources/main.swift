@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private let filmstrip = NSStackView()
     private let recordingScroll = NSScrollView()
     private var recordingStripHeight: NSLayoutConstraint!
+    private var recordingStripTopGap: NSLayoutConstraint!
     private var recordingStripVisible = UserDefaults.standard.object(forKey: "RecordingStripVisible") as? Bool ?? true
     private var recordings: [URL] = []
     private var showPastRecordings = false
@@ -156,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.mainMenu = main
     }
     private func buildWindow() {
-        panel = MirrorPanel(contentRect: NSRect(x: 100, y: 120, width: 480, height: recordingStripVisible ? 390 : 308), styleMask: [.borderless, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel = MirrorPanel(contentRect: NSRect(x: 100, y: 120, width: 480, height: recordingStripVisible ? 396 : 308), styleMask: [.borderless, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.title = "Simple Video Recorder"
         panel.appearance = NSAppearance(named: .darkAqua)
         panel.level = .normal
@@ -164,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
         panel.isReleasedWhenClosed = false
         panel.delegate = self
-        panel.minSize = NSSize(width: 360, height: recordingStripVisible ? 300 : 218)
+        panel.minSize = NSSize(width: 360, height: recordingStripVisible ? 306 : 218)
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
@@ -207,10 +208,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         scroll.documentView = filmstrip
         [preview, player, bar, scroll, status].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; root.addSubview($0) }
         recordingStripHeight = scroll.heightAnchor.constraint(equalToConstant: recordingStripVisible ? 82 : 0)
+        recordingStripTopGap = preview.bottomAnchor.constraint(equalTo: scroll.topAnchor, constant: recordingStripVisible ? -6 : 0)
         scroll.isHidden = !recordingStripVisible
         NSLayoutConstraint.activate([
             preview.topAnchor.constraint(equalTo: root.topAnchor), preview.leadingAnchor.constraint(equalTo: root.leadingAnchor), preview.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            preview.bottomAnchor.constraint(equalTo: scroll.topAnchor),
+            recordingStripTopGap,
             player.topAnchor.constraint(equalTo: preview.topAnchor), player.bottomAnchor.constraint(equalTo: preview.bottomAnchor), player.leadingAnchor.constraint(equalTo: preview.leadingAnchor), player.trailingAnchor.constraint(equalTo: preview.trailingAnchor),
             scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor), scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor), recordingStripHeight, scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             bar.widthAnchor.constraint(equalToConstant: recordButton.intrinsicContentSize.width),
@@ -356,12 +358,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if recordings.isEmpty { showPastRecordings = false }
         let visible = showPastRecordings && !recordings.isEmpty
         guard visible != recordingStripVisible else { return }
-        let heightChange: CGFloat = visible ? 82 : -82
+        let heightChange: CGFloat = visible ? 88 : -88
         recordingStripVisible = visible
         recordingScroll.isHidden = !visible
         if !visible { libraryTask?.cancel() }
         recordingStripHeight.constant = visible ? 82 : 0
-        panel.minSize = NSSize(width: 360, height: visible ? 300 : 218)
+        recordingStripTopGap.constant = visible ? -6 : 0
+        panel.minSize = NSSize(width: 360, height: visible ? 306 : 218)
         var frame = panel.frame
         frame.size.height += heightChange
         frame.origin.y -= heightChange // Keep the video and top edge in place.
