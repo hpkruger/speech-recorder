@@ -3,7 +3,7 @@ import AVFoundation
 import os
 
 /// One serial queue owns both the capture graph and writer state. Preview remains a native layer;
-/// idle sample callbacks return immediately, and compression runs only during a recording.
+/// recording outputs and microphone are active only during a recording.
 final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "SimpleVideoRecorder.capture", qos: .userInitiated)
@@ -17,6 +17,7 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     private var audioInput: AVAssetWriterInput?
     private var firstTime: CMTime?
     private var finishing = false
+    private var captureError: String?
     private var requestedAt: TimeInterval = 0
     private let logger = Logger(subsystem: "local.hanskruger.SimpleVideoRecorder", category: "Capture")
     var onError: ((String) -> Void)?
@@ -69,7 +70,7 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
                     }
                     camera.unlockForConfiguration()
                 }
-                if AVCaptureDevice.authorizationStatus(for: .audio) == .authorized { try? self.prepareMicrophone() }
+                if self.writer == nil { self.releaseRecordingResources() }
                 if !self.session.isRunning { self.session.startRunning() }
                 DispatchQueue.main.async { self.onReady?() }
             } catch { self.error(error.localizedDescription) }
@@ -90,6 +91,30 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         audioOutput.setSampleBufferDelegate(self, queue: queue)
         microphone = input
         session.commitConfiguration()
+    }
+    private func releaseRecordingResources() {
+        videoOutput.connection(with: .video)?.isEnabled = false
+        audioOutput.connection(with: .audio)?.isEnabled = false
+        if let microphone {
+            session.beginConfiguration()
+            session.removeInput(microphone)
+            session.removeOutput(audioOutput)
+            self.microphone = nil
+            session.commitConfiguration()
+        }
+    }
+    func handleRuntimeError(_ message: String) {
+        queue.async {
+            self.desiredRunning = false
+            if self.writer != nil {
+                self.captureError = message
+                self.finishOnQueue()
+            } else {
+                self.releaseRecordingResources()
+                self.error(message)
+            }
+            if self.session.isRunning { self.stopSession() }
+        }
     }
     func stop() {
         queue.async {
@@ -138,8 +163,13 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
                 }
                 writer.add(video); writer.add(audio)
                 self.writer = writer; self.videoInput = video; self.audioInput = audio
-                self.firstTime = nil; self.finishing = false
-            } catch { DispatchQueue.main.async { self.onFinished?(nil, error.localizedDescription) } }
+                self.firstTime = nil; self.finishing = false; self.captureError = nil
+                self.videoOutput.connection(with: .video)?.isEnabled = true
+                self.audioOutput.connection(with: .audio)?.isEnabled = true
+            } catch {
+                self.releaseRecordingResources()
+                DispatchQueue.main.async { self.onFinished?(nil, error.localizedDescription) }
+            }
         }
     }
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -172,6 +202,7 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     private func finishOnQueue() {
         guard let writer, !finishing else { return }
         finishing = true
+        releaseRecordingResources()
         guard writer.status == .writing else {
             writer.cancelWriting(); complete(writer, message: "Recording stopped before the first frame arrived."); return
         }
@@ -184,7 +215,10 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     }
     private func complete(_ finishedWriter: AVAssetWriter, message: String?) {
         guard writer === finishedWriter else { return }
+        let message = captureError ?? message
+        captureError = nil
         let url = finishedWriter.outputURL
+        releaseRecordingResources()
         writer = nil; videoInput = nil; audioInput = nil; firstTime = nil; finishing = false
         if !desiredRunning { stopSession() }
         // Incomplete outputs are hidden from the library, retained for possible recovery.

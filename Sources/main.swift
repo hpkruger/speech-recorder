@@ -56,7 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var suspended = false
     private var observers: [NSObjectProtocol] = []
     private var libraryTask: Task<Void, Never>?
-    private var thumbnails: [URL: NSImage] = [:]
+    private var loadedThumbnails: Set<URL> = []
+    private var recordingVersions: [URL: String] = [:]
     private var libraryGeneration = 0
     private let folder = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask)[0].appendingPathComponent("Simple Video Recorder", isDirectory: true)
 
@@ -69,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         buildWindow()
         capture.onError = { [weak self] message in
             self?.cancelPendingRecording()
+            self?.resetRecordingControls()
             self?.status.stringValue = message; self?.status.toolTip = message
             self?.recordButton.isEnabled = false
         }
@@ -112,13 +114,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         capture.onFinished = { [weak self] url, error in
             guard let self else { return }
             self.panel.level = .floating
-            self.timer?.invalidate(); self.timer = nil
-            self.busy = false; self.recording = false
-            self.recordButton.title = ""
-            self.recordButton.toolTip = "Start recording"
-            self.recordButton.setAccessibilityLabel("Start recording")
-            self.recordButton.symbol = "record.circle"
-            self.recordButton.isEnabled = !self.suspended && !self.closing
+            self.resetRecordingControls()
+            self.recordButton.isEnabled = error == nil && !self.suspended && !self.closing
             self.status.stringValue = error ?? ""
             self.status.toolTip = error
             if url != nil { self.showPastRecordings = true; self.loadLibrary() }
@@ -133,11 +130,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in self?.resume() })
         observers.append(center.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.suspend() })
         observers.append(center.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.resume() })
-        NotificationCenter.default.addObserver(self, selector: #selector(captureFailed(_:)), name: .AVCaptureSessionRuntimeError, object: capture.session)
+        NotificationCenter.default.addObserver(self, selector: #selector(captureFailed(_:)), name: AVCaptureSession.runtimeErrorNotification, object: capture.session)
         loadLibrary()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         capture.start()
+    }
+    private func resetRecordingControls() {
+        timer?.invalidate(); timer = nil; started = nil
+        busy = false; recording = false
+        recordButton.title = ""
+        recordButton.toolTip = "Start recording"
+        recordButton.setAccessibilityLabel("Start recording")
+        recordButton.symbol = "record.circle"
     }
     private func createMenus() {
         let main = NSMenu()
@@ -266,20 +271,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private func loadLibrary() {
         libraryTask?.cancel()
         libraryGeneration += 1
-        let generation = libraryGeneration
-        recordings = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
+        recordings = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey])) ?? [])
             .filter { $0.pathExtension.lowercased() == "mov" && !$0.lastPathComponent.hasPrefix(".") }
             .sorted { $0.lastPathComponent > $1.lastPathComponent }
-        filmstrip.arrangedSubviews.forEach { filmstrip.removeArrangedSubview($0); $0.removeFromSuperview() }
-        updateRecordingStripVisibility()
-        recordingButtons.removeAll()
-        var entries: [(URL, RecordingButton)] = []
+        let current = Set(recordings)
+        for url in Array(recordingButtons.keys) where !current.contains(url) {
+            if let button = recordingButtons.removeValue(forKey: url) {
+                filmstrip.removeArrangedSubview(button); button.removeFromSuperview()
+            }
+            loadedThumbnails.remove(url)
+            recordingVersions.removeValue(forKey: url)
+        }
+        let formatter = DateFormatter(); formatter.dateFormat = "d MMM · HH:mm"
         for (index, url) in recordings.enumerated() {
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+            let version = "\(values?.fileSize ?? 0)|\(values?.contentModificationDate?.timeIntervalSince1970 ?? 0)"
+            if recordingVersions[url] != version {
+                loadedThumbnails.remove(url)
+                recordingButtons[url]?.thumbnail = nil
+                recordingButtons[url]?.durationLabel = ""
+                recordingVersions[url] = version
+            }
+            if let existing = recordingButtons[url] {
+                existing.tag = index
+                existing.selected = selectedRecording == url
+                continue
+            }
             let button = RecordingButton(title: "", target: self, action: #selector(playRecording(_:)))
             button.tag = index; button.imagePosition = .imageAbove; button.imageScaling = .scaleProportionallyUpOrDown
             button.font = .systemFont(ofSize: 9); button.isBordered = false
             let date = recordingDate(url)
-            let formatter = DateFormatter(); formatter.dateFormat = "d MMM · HH:mm"
             button.dateLabel = formatter.string(from: date)
             button.toolTip = DateFormatter.localizedString(from: date, dateStyle: .long, timeStyle: .short)
             button.setAccessibilityLabel("Play recording from \(button.toolTip ?? button.dateLabel)")
@@ -293,9 +314,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let trash = menu.addItem(withTitle: "Move to Trash", action: #selector(deleteRecording(_:)), keyEquivalent: "")
             trash.target = self; trash.representedObject = url
             button.menu = menu
-            filmstrip.addArrangedSubview(button)
-            if let cached = thumbnails[url] { button.thumbnail = cached }
-            entries.append((url, button))
+            filmstrip.insertArrangedSubview(button, at: index)
+        }
+        updateRecordingStripVisibility()
+        loadPendingThumbnails()
+    }
+    private func loadPendingThumbnails() {
+        libraryTask?.cancel()
+        libraryGeneration += 1
+        guard recordingStripVisible, panel.isVisible else { return }
+        let generation = libraryGeneration
+        let entries = recordings.compactMap { url -> (URL, RecordingButton)? in
+            guard !loadedThumbnails.contains(url), let button = recordingButtons[url] else { return nil }
+            return (url, button)
         }
         libraryTask = Task { @MainActor [weak self] in
             for (url, button) in entries {
@@ -303,8 +334,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 let result = await ThumbnailCache.shared.load(url)
                 guard let self, !Task.isCancelled, self.libraryGeneration == generation else { return }
                 if let data = result.image, let image = NSImage(data: data) {
-                    self.thumbnails[url] = image; button.thumbnail = image
+                    button.thumbnail = image
                 }
+                self.loadedThumbnails.insert(url)
                 let seconds = result.seconds
                 button.durationLabel = String(format: "%d:%02d", seconds / 60, seconds % 60)
             }
@@ -317,6 +349,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc private func togglePastRecordings() {
         showPastRecordings = !recordingStripVisible
         updateRecordingStripVisibility()
+        loadPendingThumbnails()
     }
     private func updateRecordingStripVisibility() {
         defer { updateRecordControlVisibility() }
@@ -326,6 +359,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let heightChange: CGFloat = visible ? 82 : -82
         recordingStripVisible = visible
         recordingScroll.isHidden = !visible
+        if !visible { libraryTask?.cancel() }
         recordingStripHeight.constant = visible ? 82 : 0
         panel.minSize = NSSize(width: 360, height: visible ? 300 : 218)
         var frame = panel.frame
@@ -353,7 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         do {
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
             if selectedRecording == url { goLive() }
-            thumbnails.removeValue(forKey: url)
+            loadedThumbnails.remove(url)
             loadLibrary()
             updateSelection()
         } catch {
@@ -368,7 +402,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         do { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true); NSWorkspace.shared.open(folder) }
         catch { status.stringValue = error.localizedDescription }
     }
-    @objc private func showWindow() { loadLibrary(); panel.makeKeyAndOrderFront(nil); if !playing && !busy { goLive() } }
+    @objc private func showWindow() { panel.makeKeyAndOrderFront(nil); loadLibrary(); if !playing && !busy { goLive() } }
     private func cancelPendingRecording() {
         recordWhenReady = false
     }
@@ -395,11 +429,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     private func resume() { suspended = false; if panel.isVisible && !playing && !busy { goLive() } }
     @objc private func captureFailed(_ notification: Notification) {
-        DispatchQueue.main.async {
-            self.cancelPendingRecording()
-            self.status.stringValue = "Camera interrupted. Reopen the window to reconnect."
-            self.recordButton.isEnabled = false
-        }
+        let error = notification.userInfo?[AVCaptureSessionErrorKey] as? Error
+        capture.handleRuntimeError("Camera interrupted. Reopen the window to reconnect." + (error.map { " " + $0.localizedDescription } ?? ""))
     }
 }
 
