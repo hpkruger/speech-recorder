@@ -10,10 +10,10 @@ Requires macOS 14 or later and Xcode command-line tools. From this directory:
 
 ```sh
 ./scripts/build.sh
-open "$HOME/Applications/Simple Video Recorder.app"
+open "/Applications/Simple Video Recorder.app"
 ```
 
-The script creates a release build and an ad-hoc signed app bundle in `~/Applications/Simple Video Recorder.app`. It refuses to rebuild while Simple Video Recorder is running. The app bundle is kept outside the synced Documents folder because file-provider metadata there caused strict signature verification to fail. Open `Package.swift` in Xcode to edit the source; use the bundled app to run with the correct camera/microphone permission descriptions. Rebuilding an ad-hoc signed application can cause macOS to request permissions again. Distribution to other Macs would need Developer ID signing and notarization.
+The script creates a release build and an ad-hoc signed app bundle in `/Applications/Simple Video Recorder.app`. It refuses to rebuild while Simple Video Recorder is running. The app bundle is kept outside the synced Documents folder because file-provider metadata there caused strict signature verification to fail. Open `Package.swift` in Xcode to edit the source; use the bundled app to run with the correct camera/microphone permission descriptions. Rebuilding an ad-hoc signed application can cause macOS to request permissions again. Distribution to other Macs would need Developer ID signing and notarization.
 
 ## Use
 

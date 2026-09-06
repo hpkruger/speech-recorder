@@ -7,7 +7,7 @@ if pgrep -x SimpleVideoRecorder >/dev/null; then
 fi
 swift build -c release
 ./scripts/build-icon.sh
-app_path="${SIMPLE_VIDEO_RECORDER_APP_PATH:-$HOME/Applications/Simple Video Recorder.app}"
+app_path="${SIMPLE_VIDEO_RECORDER_APP_PATH:-/Applications/Simple Video Recorder.app}"
 mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
 cp Assets/AppIcon.icns "$app_path/Contents/Resources/AppIcon.icns"
 cp .build/release/SimpleVideoRecorder "$app_path/Contents/MacOS/SimpleVideoRecorder"
