@@ -31,6 +31,7 @@ final class PreviewView: NSView {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
     private var panel: MirrorPanel!
     private let capture = CaptureController()
+    private lazy var settingsController = SettingsWindowController()
     private let preview = PreviewView()
     private let player = DraggablePlayerView()
     private let recordButton = ControlButton()
@@ -149,6 +150,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let main = NSMenu()
         let appItem = NSMenuItem(); main.addItem(appItem)
         let appMenu = NSMenu(); appItem.submenu = appMenu
+        appMenu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Show Simple Video Recorder", action: #selector(showWindow), keyEquivalent: "0").target = self
         appMenu.addItem(withTitle: "Show Recordings in Finder", action: #selector(showFolder), keyEquivalent: "") .target = self
         appMenu.addItem(.separator())
@@ -187,6 +190,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         videoMenu.delegate = self
         let toggle = videoMenu.addItem(withTitle: "Show past recordings", action: #selector(togglePastRecordings), keyEquivalent: "")
         toggle.target = self
+        videoMenu.addItem(.separator())
+        videoMenu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: "").target = self
         preview.menu = videoMenu
         player.videoContextMenu = videoMenu
         let bar = recordControls; bar.isHidden = true; bar.orientation = .horizontal; bar.spacing = 8
@@ -406,10 +411,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         catch { status.stringValue = error.localizedDescription }
     }
     @objc private func showWindow() { panel.makeKeyAndOrderFront(nil); loadLibrary(); if !playing && !busy { goLive() } }
+    @objc private func showSettings() { settingsController.showSettings() }
     private func cancelPendingRecording() {
         recordWhenReady = false
     }
     @objc private func closeWindow() {
+        if settingsController.window?.isKeyWindow == true {
+            settingsController.close()
+            return
+        }
         cancelPendingRecording()
         player.player?.pause(); player.player = nil; player.isHidden = true
         playing = false; selectedRecording = nil; updateSelection()

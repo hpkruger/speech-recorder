@@ -78,7 +78,7 @@ final class CaptureController: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     }
     private func prepareMicrophone() throws {
         guard microphone == nil else { return }
-        guard let device = AVCaptureDevice.default(for: .audio) else {
+        guard let device = MicrophoneSettings.recordingDevice() else {
             throw NSError(domain: "Capture", code: 1, userInfo: [NSLocalizedDescriptionKey: "No microphone available."])
         }
         let input = try AVCaptureDeviceInput(device: device)

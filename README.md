@@ -24,6 +24,7 @@ The script creates a release build and an ad-hoc signed app bundle in `/Applicat
 - The live preview is mirrored; saved recordings use normal camera orientation.
 - Drag the video picture in either live or playback mode to move the window and drag the edges to resize it. Position and size are saved.
 - Click **Record**, allow microphone access, and click **Stop** to save.
+- Open **Settings…** from the application menu (⌘,) or by right-clicking the video to choose a default microphone. The selection is saved across launches and applies to the next recording. **System Default** follows the macOS input choice. Disconnected selections are remembered and temporarily fall back to the system default; the device list updates when microphones connect or disconnect.
 - Click a thumbnail to play it. Press **Record** to stop playback, return to the camera, and begin a new recording. Press **Stop** to save and continue viewing the live camera automatically.
 - Video fills the window by default. The icon-only **Record / Stop** button floats at the bottom center of the video. It appears while the pointer is over the video or the past-recordings strip is visible. Otherwise it hides when the pointer leaves. During recording, startup, and saving it remains visible regardless of pointer position. Status text appears when needed.
 - Live video and playback fill their display area without side bars, preserving proportions and cropping excess edges when needed. Saved videos are unchanged.
